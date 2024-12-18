@@ -6,9 +6,11 @@ import (
 	"fmt"
 	"math/big"
 	"net/http"
+	"strings"
 
 	"log"
 
+	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/gin-gonic/gin"
 	"github.com/iotexproject/iotex-antenna-go/v2/iotex"
 	"github.com/iotexproject/iotex-proto/golang/iotexapi"
@@ -21,7 +23,328 @@ const (
 	testnetRPC     = "api.testnet.iotex.one:443"
 	mainnetChainID = 1
 	testnetChainID = 2
-	customBlock    = 29402536
+	customBlock    = 29528584
+	myContractABI  = `[
+		{
+			"inputs": [
+				{
+					"internalType": "uint256",
+					"name": "initialSupply",
+					"type": "uint256"
+				}
+			],
+			"stateMutability": "nonpayable",
+			"type": "constructor"
+		},
+		{
+			"inputs": [
+				{
+					"internalType": "address",
+					"name": "spender",
+					"type": "address"
+				},
+				{
+					"internalType": "uint256",
+					"name": "allowance",
+					"type": "uint256"
+				},
+				{
+					"internalType": "uint256",
+					"name": "needed",
+					"type": "uint256"
+				}
+			],
+			"name": "ERC20InsufficientAllowance",
+			"type": "error"
+		},
+		{
+			"inputs": [
+				{
+					"internalType": "address",
+					"name": "sender",
+					"type": "address"
+				},
+				{
+					"internalType": "uint256",
+					"name": "balance",
+					"type": "uint256"
+				},
+				{
+					"internalType": "uint256",
+					"name": "needed",
+					"type": "uint256"
+				}
+			],
+			"name": "ERC20InsufficientBalance",
+			"type": "error"
+		},
+		{
+			"inputs": [
+				{
+					"internalType": "address",
+					"name": "approver",
+					"type": "address"
+				}
+			],
+			"name": "ERC20InvalidApprover",
+			"type": "error"
+		},
+		{
+			"inputs": [
+				{
+					"internalType": "address",
+					"name": "receiver",
+					"type": "address"
+				}
+			],
+			"name": "ERC20InvalidReceiver",
+			"type": "error"
+		},
+		{
+			"inputs": [
+				{
+					"internalType": "address",
+					"name": "sender",
+					"type": "address"
+				}
+			],
+			"name": "ERC20InvalidSender",
+			"type": "error"
+		},
+		{
+			"inputs": [
+				{
+					"internalType": "address",
+					"name": "spender",
+					"type": "address"
+				}
+			],
+			"name": "ERC20InvalidSpender",
+			"type": "error"
+		},
+		{
+			"anonymous": false,
+			"inputs": [
+				{
+					"indexed": true,
+					"internalType": "address",
+					"name": "owner",
+					"type": "address"
+				},
+				{
+					"indexed": true,
+					"internalType": "address",
+					"name": "spender",
+					"type": "address"
+				},
+				{
+					"indexed": false,
+					"internalType": "uint256",
+					"name": "value",
+					"type": "uint256"
+				}
+			],
+			"name": "Approval",
+			"type": "event"
+		},
+		{
+			"anonymous": false,
+			"inputs": [
+				{
+					"indexed": true,
+					"internalType": "address",
+					"name": "from",
+					"type": "address"
+				},
+				{
+					"indexed": true,
+					"internalType": "address",
+					"name": "to",
+					"type": "address"
+				},
+				{
+					"indexed": false,
+					"internalType": "uint256",
+					"name": "value",
+					"type": "uint256"
+				}
+			],
+			"name": "Transfer",
+			"type": "event"
+		},
+		{
+			"inputs": [
+				{
+					"internalType": "address",
+					"name": "owner",
+					"type": "address"
+				},
+				{
+					"internalType": "address",
+					"name": "spender",
+					"type": "address"
+				}
+			],
+			"name": "allowance",
+			"outputs": [
+				{
+					"internalType": "uint256",
+					"name": "",
+					"type": "uint256"
+				}
+			],
+			"stateMutability": "view",
+			"type": "function"
+		},
+		{
+			"inputs": [
+				{
+					"internalType": "address",
+					"name": "spender",
+					"type": "address"
+				},
+				{
+					"internalType": "uint256",
+					"name": "value",
+					"type": "uint256"
+				}
+			],
+			"name": "approve",
+			"outputs": [
+				{
+					"internalType": "bool",
+					"name": "",
+					"type": "bool"
+				}
+			],
+			"stateMutability": "nonpayable",
+			"type": "function"
+		},
+		{
+			"inputs": [
+				{
+					"internalType": "address",
+					"name": "account",
+					"type": "address"
+				}
+			],
+			"name": "balanceOf",
+			"outputs": [
+				{
+					"internalType": "uint256",
+					"name": "",
+					"type": "uint256"
+				}
+			],
+			"stateMutability": "view",
+			"type": "function"
+		},
+		{
+			"inputs": [],
+			"name": "decimals",
+			"outputs": [
+				{
+					"internalType": "uint8",
+					"name": "",
+					"type": "uint8"
+				}
+			],
+			"stateMutability": "view",
+			"type": "function"
+		},
+		{
+			"inputs": [],
+			"name": "name",
+			"outputs": [
+				{
+					"internalType": "string",
+					"name": "",
+					"type": "string"
+				}
+			],
+			"stateMutability": "view",
+			"type": "function"
+		},
+		{
+			"inputs": [],
+			"name": "symbol",
+			"outputs": [
+				{
+					"internalType": "string",
+					"name": "",
+					"type": "string"
+				}
+			],
+			"stateMutability": "view",
+			"type": "function"
+		},
+		{
+			"inputs": [],
+			"name": "totalSupply",
+			"outputs": [
+				{
+					"internalType": "uint256",
+					"name": "",
+					"type": "uint256"
+				}
+			],
+			"stateMutability": "view",
+			"type": "function"
+		},
+		{
+			"inputs": [
+				{
+					"internalType": "address",
+					"name": "to",
+					"type": "address"
+				},
+				{
+					"internalType": "uint256",
+					"name": "value",
+					"type": "uint256"
+				}
+			],
+			"name": "transfer",
+			"outputs": [
+				{
+					"internalType": "bool",
+					"name": "",
+					"type": "bool"
+				}
+			],
+			"stateMutability": "nonpayable",
+			"type": "function"
+		},
+		{
+			"inputs": [
+				{
+					"internalType": "address",
+					"name": "from",
+					"type": "address"
+				},
+				{
+					"internalType": "address",
+					"name": "to",
+					"type": "address"
+				},
+				{
+					"internalType": "uint256",
+					"name": "value",
+					"type": "uint256"
+				}
+			],
+			"name": "transferFrom",
+			"outputs": [
+				{
+					"internalType": "bool",
+					"name": "",
+					"type": "bool"
+				}
+			],
+			"stateMutability": "nonpayable",
+			"type": "function"
+		}
+	]`
 )
 
 // For high-value transactions, wait for 12 confirmations.
@@ -60,6 +383,11 @@ func ConnectIoTeX2() {
 	defer conn.Close()
 
 	client := iotexapi.NewAPIServiceClient(conn)
+
+	contractABI, err := abi.JSON(strings.NewReader(myContractABI))
+	if err != nil {
+		log.Fatalf("Failed to parse contract ABI: %v", err)
+	}
 
 	// Get the latest block height
 	chainMeta, err := client.GetChainMeta(context.Background(), &iotexapi.GetChainMetaRequest{})
@@ -123,6 +451,8 @@ func ConnectIoTeX2() {
 				fmt.Printf("Amount (in Rau): %s\n", transfer.Amount)
 				fmt.Printf("Amount (in IOTX): %s\n", amountInIOTX.String())
 				fmt.Printf("Transaction Type: Transfer\n")
+			} else if execution := action.Action.Core.GetExecution(); execution != nil {
+				fmt.Printf("Transaction Type: Contract Execution\n")
 			} else {
 				fmt.Printf("Transaction Type: Not a Transfer\n")
 			}
@@ -151,6 +481,32 @@ func ConnectIoTeX2() {
 			// Convert Rau to IOTX
 			priceInQev := new(big.Float).Quo(new(big.Float).SetInt(gasPrice), big.NewFloat(1e15))
 
+			if execution := action.Action.Core.GetExecution(); execution != nil {
+				fmt.Printf("Contract: %s\n", execution.Contract)
+
+				// Decode the execution data
+				data := execution.Data
+				if len(data) > 0 {
+					method, err := contractABI.MethodById(data[:4])
+					if err != nil {
+						fmt.Println("Error finding method by ID:", err)
+					}
+					fmt.Printf("Method: %s\n", method.Name)
+
+					args, err := method.Inputs.Unpack(data[4:])
+					if err != nil {
+						fmt.Println("Error unpacking method inputs:", err)
+					}
+					fmt.Printf("Arguments: %v\n", args)
+					// Convert Rau to IOTX
+					amountFloat, _ := new(big.Float).SetString(fmt.Sprintf("%s", args[1]))
+					amountInIOTX := new(big.Float).Quo(amountFloat, big.NewFloat(1e18))
+
+					fmt.Printf("Recipient: %s\n", args[0])
+					fmt.Printf("Amount (in Rau): %s\n", args[1])
+					fmt.Printf("Amount (in IOTX): %s\n", amountInIOTX.String())
+				}
+			}
 			// Print additional details
 			fmt.Printf("Status: %d\n", receipt.ReceiptInfo.Receipt.Status) // 0 - failed, 1 - success
 			fmt.Printf("Timestamp: %d\n", action.Timestamp.Seconds)

@@ -33,6 +33,11 @@ func main() {
 			Usage:  "Start listener Server",
 			Action: svr.StartListenerServer,
 		},
+		{
+			Name:   "start-cw-app",
+			Usage:  "Start cw Server",
+			Action: svr.StartCwServer,
+		},
 	}
 	err := app.Run(os.Args)
 	if err != nil {
