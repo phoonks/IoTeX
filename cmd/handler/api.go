@@ -59,36 +59,7 @@ func (h *HttpServer) StartApiServer(c *cli.Context) error {
 	// ValidateUncompressedPublicKey(uncpub)
 
 	// pub generate: io1627w7kvlwkj72xheyhknrf69chdvjqwgzz0y5r / 0xd2bcef599f75a5e51af925ed31a745c5dac901c8
-	// GenerateUncompressedToAddress(uncpub)
 	// EthToIoTeXAddress("0xd2bcef599f75a5e51af925ed31a745c5dac901c8")
-
-	// path := []uint32{
-	// 	44 + hdkeychain.HardenedKeyStart,  // 44'
-	// 	304 + hdkeychain.HardenedKeyStart, // 304'
-	// 	0 + hdkeychain.HardenedKeyStart,   // 0'
-	// 	0,                                 // Normal index
-	// 	0,                                 // First account
-	// }
-	// // Derive the child public key
-	// compressedPubKey, err := DeriveChildPublicKey(xpub, path)
-	// if err != nil {
-	// 	log.Fatalf("Error deriving child public key: %v", err)
-	// }
-	// fmt.Printf("Derived Compressed Public Key: %s\n", compressedPubKey)
-	// // Generate the IoTeX address
-	// iotexAddress, err := GenerateIoTeXAddress(compressedPubKey)
-	// if err != nil {
-	// 	log.Fatalf("Error generating IoTeX address: %v", err)
-	// }
-	// fmt.Printf("IoTeX Address: %s\n", iotexAddress)
-
-	// GenerateIoTeXAddress(xpub)
-
-	// publicKey, err := DecompressPublicKey("d4f5817b9a2d3532bf3a4bbc3ccd145cc6adf8c7")
-	// if err != nil {
-	// 	fmt.Println(err)
-	// }
-	// GenerateIoTeXAddress(publicKey)
 
 	// CreateAddress()
 	// Withdraw()
@@ -97,56 +68,6 @@ func (h *HttpServer) StartApiServer(c *cli.Context) error {
 	}
 
 	return nil
-}
-
-func keccak256(data []byte) []byte {
-	hash := sha3.NewLegacyKeccak256() // Keccak-256
-	hash.Write(data)
-	return hash.Sum(nil)
-}
-
-func GenerateUncompressedToAddress(uncompressedPubKey string) (string, error) {
-	// Decode the uncompressed public key from hex
-	pubKeyBytes, err := hex.DecodeString(uncompressedPubKey)
-	if err != nil {
-		fmt.Println("Error decoding public key:", err)
-		return "", err
-	}
-
-	// Compress the public key
-	if len(pubKeyBytes) != 65 || pubKeyBytes[0] != 0x04 {
-		log.Fatalf("Invalid uncompressed public key format")
-	}
-
-	// Convert the raw public key into an ECDSA public key (skip the 0x04 prefix)
-	publicKey, err := crypto.UnmarshalPubkey(pubKeyBytes)
-
-	// Compress the public key
-	compressed := crypto.CompressPubkey(publicKey)
-	fmt.Printf("compressed: %x \n", compressed)
-
-	// Ensure the uncompressed key is valid (starts with 0x04)
-	if pubKeyBytes[0] != 0x04 {
-		fmt.Println("Invalid uncompressed public key format.")
-		return "", err
-	}
-
-	// Extract the 64-byte compressed public key (after the 0x04 prefix)
-	compressedPubKey := pubKeyBytes[1:]
-
-	if len(compressedPubKey) != 64 {
-		return "", errors.New("invalid compressed public key length")
-	}
-	// Hash the compressed public key using Keccak-256
-	hashedPubKey := keccak256(compressedPubKey)
-	h := hash.Hash160b(hashedPubKey[1:])
-
-	// Convert the address to hex and prepend "0x" prefix
-	address := "0x" + hex.EncodeToString(h[:])
-
-	// Step 5: Return the address in lowercase
-	fmt.Printf("Generated ETH IoTeX Address: %s\n", address)
-	return address, nil
 }
 
 func EthToIoTeXAddress(ethAddress string) string {
